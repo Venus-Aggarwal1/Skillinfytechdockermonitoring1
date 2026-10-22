@@ -43,6 +43,14 @@ container_memory_working_set_bytes{name!=""}
 
 Once you’ve built a good dashboard, export it as JSON and add a dashboards provisioning folder so it’s version-controlled.
 
-Production note:
+Production notes:
 
 Don’t expose 9090/3000 publicly. Put them behind a reverse proxy with TLS and auth, or bind to 127.0.0.1.
+
+Multiple app replicas or dynamic containers: replace static_configs with docker_sd_configs (mount the Docker socket read-only) or Consul/DNS service discovery.
+
+Kubernetes: use kube-prometheus-stack via Helm instead.
+
+Long-term storage / HA: consider Thanos, Mimir, or remote_write to a managed backend.
+
+Avoid high-cardinality labels (user IDs, raw URLs with IDs). They’re the most common cause of Prometheus memory blowups.
