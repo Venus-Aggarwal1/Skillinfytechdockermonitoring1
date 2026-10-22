@@ -1,0 +1,64 @@
+services:
+  app:
+    image: venusapp3:latest          # replace with your image
+    ports:
+      - "8000:8000"                 # app must expose /metrics on this port
+    networks: [monitoring]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [monitoring]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set in .env}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus]
+    networks: [monitoring]
+    restart: unless-stopped
+
+  cadvisor:                          # per-container CPU/mem/network/IO
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8081:8080" 
+    networks: [monitoring]
+    restart: unless-stopped
+
+  node-exporter:                     # host-level metrics
+    image: prom/node-exporter:v1.8.2
+    command: ["--path.rootfs=/host"]
+    volumes:
+      - /:/host:ro
+    networks: [monitoring]
+    restart: unless-stopped
+
+networks:
+  monitoring:
+
+volumes:
+  prometheus_data:
+  grafana_data:
